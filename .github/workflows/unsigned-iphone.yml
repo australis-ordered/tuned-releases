@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       build_tag:
-        description: Draft release containing the audited native build inputs
+        description: Release containing the audited native build inputs
         required: true
         default: mobile-build-0.13.1
 permissions:
@@ -22,7 +22,8 @@ jobs:
           mkdir -p inputs
           gh release download "$BUILD_TAG" --repo "$REPOSITORY" --pattern '*-iOS-build-inputs.zip' --pattern '*-iOS-build-inputs.zip.sha256' --dir inputs
           cd inputs
-          shasum -a 256 -c *-iOS-build-inputs.zip.sha256
+          tr -d '\r' < *-iOS-build-inputs.zip.sha256 > inputs.sha256
+          shasum -a 256 -c inputs.sha256
           unzip -q '*-iOS-build-inputs.zip' -d ../mobile
       - uses: actions/setup-node@v4
         with:
