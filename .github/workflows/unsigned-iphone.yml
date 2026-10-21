@@ -1,0 +1,51 @@
+name: Unsigned iPhone package
+on:
+  workflow_dispatch:
+    inputs:
+      build_tag:
+        description: Draft release containing the audited native build inputs
+        required: true
+        default: mobile-build-0.13.1
+permissions:
+  contents: read
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Download audited build inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_TAG: ${{ inputs.build_tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          mkdir -p inputs
+          gh release download "$BUILD_TAG" --repo "$REPOSITORY" --pattern '*-iOS-build-inputs.zip' --pattern '*-iOS-build-inputs.zip.sha256' --dir inputs
+          cd inputs
+          shasum -a 256 -c *-iOS-build-inputs.zip.sha256
+          unzip -q '*-iOS-build-inputs.zip' -d ../mobile
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install only native plugin build dependencies
+        working-directory: mobile
+        run: npm ci --ignore-scripts --omit=dev
+      - name: Compile iPhone device app and package Payload
+        working-directory: mobile
+        run: npm run build:ios
+      - name: Check IPA layout and absence of signing
+        working-directory: mobile
+        run: |
+          unzip -l release/*-unsigned.ipa | grep 'Payload/TUNED.app/Info.plist'
+          test -f mobile-build/unsigned-ipa/Payload/TUNED.app/App
+          if codesign --verify mobile-build/unsigned-ipa/Payload/TUNED.app 2>/dev/null; then
+            echo 'Expected an unsigned device app'
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TUNED-iPhone-unsigned
+          path: |
+            mobile/release/*-unsigned.ipa
+            mobile/release/*-unsigned.ipa.sha256
+          if-no-files-found: error
