@@ -43,11 +43,20 @@ jobs:
             echo 'Expected an unsigned device app'
             exit 1
           fi
+      - name: Save compiled iPhone package
+        uses: actions/upload-artifact@v4
+        with:
+          name: TUNED-iPhone-unsigned
+          path: |
+            mobile/release/*-unsigned.ipa
+            mobile/release/*-unsigned.ipa.sha256
+          if-no-files-found: error
       - name: Build iOS simulator verification app
         working-directory: mobile
         run: |
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath mobile-build/simulator CODE_SIGNING_ALLOWED=NO ARCHS=arm64 build > simulator-build.log 2>&1 || { tail -n 100 simulator-build.log; exit 1; }
       - name: Verify native playback and full iPhone viewport
+        timeout-minutes: 6
         working-directory: mobile
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import sys,json; data=json.load(sys.stdin); print(next(d["udid"] for runtime,devices in data["devices"].items() if "iOS" in runtime for d in devices if d["name"].startswith("iPhone")))')
@@ -67,10 +76,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: TUNED-iPhone-unsigned
+          name: TUNED-iOS-verification
           path: |
-            mobile/release/*-unsigned.ipa
-            mobile/release/*-unsigned.ipa.sha256
             mobile/release/ios-verification.json
             mobile/release/ios-simulator.png
-          if-no-files-found: error
+          if-no-files-found: warn
