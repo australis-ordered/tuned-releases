@@ -54,7 +54,7 @@ jobs:
       - name: Build iOS simulator verification app
         working-directory: mobile
         run: |
-          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath mobile-build/simulator CODE_SIGNING_ALLOWED=NO ARCHS=arm64 build > simulator-build.log 2>&1 || { tail -n 100 simulator-build.log; exit 1; }
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath mobile-build/simulator CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual ARCHS=arm64 build > simulator-build.log 2>&1 || { tail -n 100 simulator-build.log; exit 1; }
       - name: Verify native playback and full iPhone viewport
         timeout-minutes: 9
         working-directory: mobile
